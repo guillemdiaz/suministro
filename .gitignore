@@ -1,4 +1,5 @@
 .env
+.venv/
 logs/
 __pycache__/
 *.pyc
@@ -6,3 +7,5 @@ dags/dbt/*/target/
 dags/dbt/*/dbt_packages/
 *.json
 !requirements.txt
+secrets/
+config/
