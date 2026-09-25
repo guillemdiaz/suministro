@@ -9,3 +9,5 @@ dags/dbt/*/dbt_packages/
 !requirements.txt
 secrets/
 config/
+.pytest_cache/
+.ruff_cache/

@@ -1,0 +1,9 @@
+-r requirements.txt
+
+# Development and testing tools
+pytest
+pytest-mock
+ruff
+sqlfluff
+sqlfluff-templater-dbt
+pre-commit
