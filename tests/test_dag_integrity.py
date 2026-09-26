@@ -5,7 +5,7 @@ from airflow.models import DagBag
 @pytest.fixture(scope="session")
 def dag_bag():
     """Fixture to load all DAGs once per test session."""
-    return DagBag(dag_folder="dags", include_examples=False)
+    return DagBag(dag_folder="dags")
 
 
 def test_no_import_errors(dag_bag):
