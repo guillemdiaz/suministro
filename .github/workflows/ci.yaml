@@ -28,9 +28,10 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Create dummy dbt profile for SQLFluff
+      - name: Create dummy dbt profile and project for SQLFluff
         run: |
           mkdir -p dags/dbt/cima_marts/models
+
           cat <<EOF > dags/dbt/cima_marts/profiles.yml
           cima_marts:
             outputs:
@@ -40,6 +41,13 @@ jobs:
                 project: dummy-project
                 dataset: dummy_dataset
             target: dev
+          EOF
+
+          cat <<EOF > dags/dbt/cima_marts/dbt_project.yml
+          name: 'cima_marts'
+          version: '1.0.0'
+          config-version: 2
+          profile: 'cima_marts'
           EOF
 
       - name: Run sqlfluff (SQL lint)
