@@ -1,0 +1,57 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Install dependencies
+        run: uv pip install --system -r requirements-dev.txt
+
+      - name: Run Ruff (lint + format check)
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Create dummy dbt profile and project for SQLFluff
+        run: |
+          mkdir -p dags/dbt/cima_marts/models
+
+          cat <<EOF > dags/dbt/cima_marts/profiles.yml
+          cima_marts:
+            outputs:
+              dev:
+                type: bigquery
+                method: oauth
+                project: dummy-project
+                dataset: dummy_dataset
+            target: dev
+          EOF
+
+          cat <<EOF > dags/dbt/cima_marts/dbt_project.yml
+          name: 'cima_marts'
+          version: '1.0.0'
+          config-version: 2
+          profile: 'cima_marts'
+          EOF
+
+      - name: Run sqlfluff (SQL lint)
+        run: sqlfluff lint dags/dbt/cima_marts/models
+
+      - name: Run Pytest (DAG integrity)
+        run: pytest tests/ -v
