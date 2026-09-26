@@ -30,7 +30,7 @@ jobs:
 
       - name: Create dummy dbt profile for SQLFluff
         run: |
-          mkdir -p dags/dbt/cima_marts
+          mkdir -p dags/dbt/cima_marts/models
           cat <<EOF > dags/dbt/cima_marts/profiles.yml
           cima_marts:
             outputs:
