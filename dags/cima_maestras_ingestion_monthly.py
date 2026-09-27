@@ -18,7 +18,7 @@ HEADERS = {
 
 
 @dag(
-    dag_id="cima_maestras_monthly",
+    dag_id="cima_maestras_ingestion_monthly",
     start_date=pendulum.datetime(2026, 9, 25, tz="UTC"),
     schedule=CronDataIntervalTimetable("0 6 1 * *", timezone="UTC"),
     catchup=False,
