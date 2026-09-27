@@ -2,3 +2,4 @@ astronomer-cosmos
 dbt-bigquery
 google-cloud-storage
 requests
+apache-airflow-providers-google
