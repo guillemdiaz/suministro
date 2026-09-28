@@ -4,11 +4,17 @@ import time
 import pendulum
 import requests
 from airflow.decorators import dag, task
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 from airflow.sdk import ObjectStoragePath
 from airflow.timetables.interval import CronDataIntervalTimetable
+from schemas.cima import MEDICAMENTOS_SCHEMA, PRESENTACIONES_SCHEMA, PSUMINISTRO_SCHEMA
 
 BASE_URL = "https://cima.aemps.es/cima/rest"
 BASE_PATH = ObjectStoragePath("gs://guillemdiaz-suministro/")
+
+# BigQuery configuration
+BQ_DATASET = "suministro_bronze"
+BUCKET = "guillemdiaz-suministro"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -176,9 +182,61 @@ def cima_pipeline():
 
         return str(target)
 
+    # BigQuery loading tasks
+    # --------------------------------------------------------------------------
+    # - Concatenates "${{ ds_nodash }}" to the table name to dynamically route
+    #   each day's data into a specific date partition.
+    # - autodetect=False prevents BigQuery from misidentifying data types across days
+    # - ignore_unknown_values=True ensures the DAG won't crash if the AEMPS API
+    #   adds a new field to the JSON response.
+    # --------------------------------------------------------------------------
+    load_psuministro_bq = GCSToBigQueryOperator(
+        task_id="load_psuministro_bq",
+        bucket=BUCKET,
+        source_objects=["psuministro/{{ ds }}/data.json"],
+        source_format="NEWLINE_DELIMITED_JSON",
+        destination_project_dataset_table=f"{BQ_DATASET}.psuministro" + "${{ ds_nodash }}",
+        time_partitioning={"type": "DAY"},
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=False,
+        schema_fields=PSUMINISTRO_SCHEMA,
+        ignore_unknown_values=True,
+    )
+
+    load_presentaciones_bq = GCSToBigQueryOperator(
+        task_id="load_presentaciones_bq",
+        bucket=BUCKET,
+        source_objects=["presentaciones/{{ ds }}/data.json"],
+        source_format="NEWLINE_DELIMITED_JSON",
+        destination_project_dataset_table=f"{BQ_DATASET}.presentaciones" + "${{ ds_nodash }}",
+        time_partitioning={"type": "DAY"},
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=False,
+        schema_fields=PRESENTACIONES_SCHEMA,
+        ignore_unknown_values=True,
+    )
+
+    load_medicamentos_bq = GCSToBigQueryOperator(
+        task_id="load_medicamentos_bq",
+        bucket=BUCKET,
+        source_objects=["medicamentos/{{ ds }}/data.json"],
+        source_format="NEWLINE_DELIMITED_JSON",
+        destination_project_dataset_table=f"{BQ_DATASET}.medicamentos" + "${{ ds_nodash }}",
+        time_partitioning={"type": "DAY"},
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=False,
+        schema_fields=MEDICAMENTOS_SCHEMA,
+        ignore_unknown_values=True,
+    )
+
+    # Pipeline logic
     cns = extract_psuministro()
     nregistros = extract_presentaciones(cns)
-    extract_medicamentos(nregistros)
+    meds = extract_medicamentos(nregistros)
+
+    cns >> load_psuministro_bq
+    nregistros >> load_presentaciones_bq
+    meds >> load_medicamentos_bq
 
 
 cima_pipeline()
