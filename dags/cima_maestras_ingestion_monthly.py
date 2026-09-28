@@ -4,9 +4,8 @@ import time
 
 import pendulum
 import requests
-from airflow.decorators import dag, task
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
-from airflow.sdk import ObjectStoragePath
+from airflow.sdk import ObjectStoragePath, dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
 from schemas.cima import ATC_SCHEMA, LAB_SCHEMA
 
