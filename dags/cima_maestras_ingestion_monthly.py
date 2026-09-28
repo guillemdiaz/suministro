@@ -4,12 +4,17 @@ import time
 
 import pendulum
 import requests
-from airflow.decorators import dag, task
-from airflow.sdk import ObjectStoragePath
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+from airflow.sdk import ObjectStoragePath, dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
+from schemas.cima import ATC_SCHEMA, LAB_SCHEMA
 
 BASE_URL = "https://cima.aemps.es/cima/rest"
 BASE_PATH = ObjectStoragePath("gs://guillemdiaz-suministro/")
+
+# BigQuery configuration
+BQ_DATASET = "suministro_bronze"
+BUCKET = "guillemdiaz-suministro"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -123,7 +128,44 @@ def cima_maestras_pipeline():
         )
         return str(atc_target)
 
-    extract_maestras()
+    # BigQuery loading tasks
+    # -------------------------------------------------------------------------
+    # - Since these are slow-moving reference catalogs, WRITE_TRUNCATE is used
+    #   without time partitioning to replace the entire table with the freshest
+    #   data every month.
+    # - autodetect=False prevents BigQuery from misidentifying data types across days
+    # - ignore_unknown_values=True ensures the DAG won't crash if the AEMPS API
+    #   adds a new field to the JSON response.
+    # -------------------------------------------------------------------------
+    load_atc_codes_bq = GCSToBigQueryOperator(
+        task_id="load_atc_codes_bq",
+        bucket=BUCKET,
+        source_objects=["maestras/{{ ds }}/atc_codes.json"],
+        source_format="NEWLINE_DELIMITED_JSON",
+        destination_project_dataset_table=f"{BQ_DATASET}.atc_codes",
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=False,
+        schema_fields=ATC_SCHEMA,
+        ignore_unknown_values=True,
+    )
+
+    load_laboratorios_bq = GCSToBigQueryOperator(
+        task_id="load_laboratorios_bq",
+        bucket=BUCKET,
+        source_objects=["maestras/{{ ds }}/laboratorios.json"],
+        source_format="NEWLINE_DELIMITED_JSON",
+        destination_project_dataset_table=f"{BQ_DATASET}.laboratorios",
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=False,
+        schema_fields=LAB_SCHEMA,
+        ignore_unknown_values=True,
+    )
+
+    # Pipeline logic
+    maestras_extracted = extract_maestras()
+
+    maestras_extracted >> load_atc_codes_bq
+    maestras_extracted >> load_laboratorios_bq
 
 
 cima_maestras_pipeline()

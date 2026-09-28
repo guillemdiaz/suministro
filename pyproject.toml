@@ -23,3 +23,9 @@ project_dir = "dags/dbt/cima_marts"
 profiles_dir = "dags/dbt/cima_marts"
 profile = "cima_marts"
 target = "dev"
+
+# Pytest configuration
+[tool.pytest.ini_options]
+pythonpath = [
+    "dags"
+]
