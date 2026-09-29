@@ -30,10 +30,10 @@ jobs:
 
       - name: Create dummy dbt profile and project for SQLFluff
         run: |
-          mkdir -p dags/dbt/cima_marts/models
+          mkdir -p dags/dbt/cima_dbt/models
 
-          cat <<EOF > dags/dbt/cima_marts/profiles.yml
-          cima_marts:
+          cat <<EOF > dags/dbt/cima_dbt/profiles.yml
+          cima_dbt:
             outputs:
               dev:
                 type: bigquery
@@ -43,15 +43,15 @@ jobs:
             target: dev
           EOF
 
-          cat <<EOF > dags/dbt/cima_marts/dbt_project.yml
-          name: 'cima_marts'
+          cat <<EOF > dags/dbt/cima_dbt/dbt_project.yml
+          name: 'cima_dbt'
           version: '1.0.0'
           config-version: 2
-          profile: 'cima_marts'
+          profile: 'cima_dbt'
           EOF
 
       - name: Run sqlfluff (SQL lint)
-        run: sqlfluff lint dags/dbt/cima_marts/models
+        run: sqlfluff lint dags/dbt/cima_dbt/models
 
       - name: Run Pytest (DAG integrity)
         run: pytest tests/ -v
