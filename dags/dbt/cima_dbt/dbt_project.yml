@@ -1,24 +1,27 @@
-name: cima_dbt
+name: 'cima_dbt'
+version: '1.0.0'
+config-version: 2
 
-profile: cima_dbt
+profile: 'cima_dbt'
 
-seed-paths: ["seeds"]
 model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
 macro-paths: ["macros"]
-clean-targets:
-  - "target"
-  - "dbt_packages"
+snapshot-paths: ["snapshots"]
 
-seeds:
-  # Builds seeds into '<your_schema_name>_raw'
-  cima_dbt:
-    +schema: raw
+target-path: "target"
+clean-targets:
+    - "target"
+    - "dbt_packages"
 
 models:
   cima_dbt:
     +static_analysis: strict
-    # Materialize staging models as views, and marts as tables
     staging:
+      +materialized: view
+    intermediate:
       +materialized: view
     marts:
       +materialized: table
