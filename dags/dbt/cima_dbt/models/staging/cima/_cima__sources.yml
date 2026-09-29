@@ -1,0 +1,61 @@
+version: 2
+
+sources:
+  - name: cima
+    description: Raw data ingested daily from the AEMPS CIMA API
+    database: guillemdiaz-data
+    schema: suministro_bronze
+
+    config:
+      freshness:
+        warn_after: {count: 24, period: hour}
+        error_after: {count: 48, period: hour}
+
+    tables:
+      - name: psuministro
+        description: Daily snapshot of active medication shortages.
+        config:
+          loaded_at_field: _PARTITIONTIME
+        columns:
+          - name: cn
+            description: Código Nacional (Primary Key)
+            data_tests:
+              - not_null
+
+      - name: presentaciones
+        description: Commercial presentation details for medications.
+        config:
+          loaded_at_field: _PARTITIONTIME
+        columns:
+          - name: cn
+            description: Código Nacional (Primary Key)
+            data_tests:
+              - not_null
+
+      - name: medicamentos
+        description: Core medication data including active ingredients.
+        config:
+          loaded_at_field: _PARTITIONTIME
+        columns:
+          - name: nregistro
+            description: Número de Registro (Primary Key)
+            data_tests:
+              - not_null
+
+      - name: atc_codes
+        description: Monthly snapshot of the ATC hierarchical classification.
+        columns:
+          - name: codigo
+            description: ATC Code (Primary Key)
+            data_tests:
+              - unique
+              - not_null
+
+      - name: laboratorios
+        description: Monthly snapshot of registered laboratories.
+        columns:
+          - name: nombre
+            description: Laboratory Name (Primary Key)
+            data_tests:
+              - unique
+              - not_null
