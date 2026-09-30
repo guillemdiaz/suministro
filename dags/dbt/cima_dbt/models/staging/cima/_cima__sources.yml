@@ -18,7 +18,8 @@ sources:
           loaded_at_field: _PARTITIONTIME
         columns:
           - name: cn
-            description: Código Nacional (Primary Key)
+            description: National drug code (Código Nacional). Not unique alone,
+                         since the same value recurs across daily snapshots.
             data_tests:
               - not_null
 
@@ -28,7 +29,8 @@ sources:
           loaded_at_field: _PARTITIONTIME
         columns:
           - name: cn
-            description: Código Nacional (Primary Key)
+            description: National drug code (Código Nacional). Not unique alone,
+                         since the same value recurs across daily snapshots.
             data_tests:
               - not_null
 
@@ -38,7 +40,8 @@ sources:
           loaded_at_field: _PARTITIONTIME
         columns:
           - name: nregistro
-            description: Número de Registro (Primary Key)
+            description: Registration number (Número de Registro). Not unique alone,
+                         since the same value recurs across daily snapshots.
             data_tests:
               - not_null
 
@@ -46,7 +49,7 @@ sources:
         description: Monthly snapshot of the ATC hierarchical classification.
         columns:
           - name: codigo
-            description: ATC Code (Primary Key)
+            description: ATC code, primary key of this table.
             data_tests:
               - unique
               - not_null
@@ -55,7 +58,7 @@ sources:
         description: Monthly snapshot of registered laboratories.
         columns:
           - name: nombre
-            description: Laboratory Name (Primary Key)
+            description: Laboratory name, primary key of this table.
             data_tests:
               - unique
               - not_null
