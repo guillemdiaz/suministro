@@ -9,6 +9,10 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+
+    env:
+      DBT_PROFILES_DIR: dags/dbt/cima_dbt
+
     steps:
       - uses: actions/checkout@v7
 
@@ -49,6 +53,10 @@ jobs:
           config-version: 2
           profile: 'cima_dbt'
           EOF
+
+      - name: Install dbt dependencies
+        run: dbt deps
+        working-directory: dags/dbt/cima_dbt
 
       - name: Run sqlfluff (SQL lint)
         run: sqlfluff lint dags/dbt/cima_dbt/models
