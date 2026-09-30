@@ -1,5 +1,8 @@
 with raw_presentaciones as (
-    select * from {{ source('cima', 'presentaciones') }}
+    select
+        *,
+        _partitiondate as snapshot_date
+    from {{ source('cima', 'presentaciones') }}
 ),
 
 renamed_and_casted as (
@@ -34,7 +37,7 @@ renamed_and_casted as (
         cast(materialesinf as boolean) as has_safety_materials,
 
         -- Partition tracking
-        _partitiondate as snapshot_date
+        snapshot_date
 
     from raw_presentaciones
 )

@@ -1,5 +1,8 @@
 with raw_medicamentos as (
-    select * from {{ source('cima', 'medicamentos') }}
+    select
+        *,
+        _partitiondate as snapshot_date
+    from {{ source('cima', 'medicamentos') }}
 ),
 
 renamed_and_casted as (
@@ -36,7 +39,7 @@ renamed_and_casted as (
         atcs as atc_codes,
 
         -- Partition tracking
-        _partitiondate as snapshot_date
+        snapshot_date
 
     from raw_medicamentos
 )

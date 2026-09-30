@@ -1,5 +1,8 @@
 with raw_psuministro as (
-    select * from {{ source('cima', 'psuministro') }}
+    select distinct
+        *,
+        _partitiondate as snapshot_date
+    from {{ source('cima', 'psuministro') }}
 ),
 
 renamed_and_casted as (
@@ -20,7 +23,7 @@ renamed_and_casted as (
         cast(observ as string) as observation,
 
         -- Partition tracking
-        _partitiondate as snapshot_date
+        snapshot_date
 
     from raw_psuministro
 )
