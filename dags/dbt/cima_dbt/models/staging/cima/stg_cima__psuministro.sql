@@ -25,4 +25,13 @@ renamed_and_casted as (
     from raw_psuministro
 )
 
-select * from renamed_and_casted
+select
+    -- Surrogate primary key: national_drug_code + snapshot_date
+    {{
+        dbt_utils.generate_surrogate_key([
+            'national_drug_code',
+            'snapshot_date'
+        ])
+    }} as shortage_snapshot_key,
+    *
+from renamed_and_casted

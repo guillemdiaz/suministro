@@ -4,13 +4,12 @@ models:
   - name: stg_cima__psuministro
     description: Daily snapshot of active medication shortages, one row per
                  national_drug_code per snapshot_date.
-    data_tests:
-      - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns:
-              - national_drug_code
-              - snapshot_date
     columns:
+      - name: shortage_snapshot_key
+        description: Surrogate primary key (national_drug_code + snapshot_date).
+        data_tests:
+          - unique
+          - not_null
       - name: national_drug_code
         description: National drug code (Código Nacional), the presentation-level
                      identifier used by AEMPS. Primary key of this model.
