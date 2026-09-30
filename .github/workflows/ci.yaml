@@ -9,6 +9,10 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+
+    env:
+      DBT_PROFILES_DIR: dags/dbt/cima_dbt
+
     steps:
       - uses: actions/checkout@v7
 
@@ -28,30 +32,32 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Create dummy dbt profile and project for SQLFluff
-        run: |
-          mkdir -p dags/dbt/cima_marts/models
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-          cat <<EOF > dags/dbt/cima_marts/profiles.yml
-          cima_marts:
+      # CI profile that uses the authenticated session
+      - name: Create CI dbt profile
+        run: |
+          cat <<EOF > dags/dbt/cima_dbt/profiles.yml
+          cima_dbt:
             outputs:
               dev:
                 type: bigquery
                 method: oauth
-                project: dummy-project
-                dataset: dummy_dataset
+                project: guillemdiaz-data
+                dataset: suministro_dev
+                location: europe-southwest1
             target: dev
           EOF
 
-          cat <<EOF > dags/dbt/cima_marts/dbt_project.yml
-          name: 'cima_marts'
-          version: '1.0.0'
-          config-version: 2
-          profile: 'cima_marts'
-          EOF
+      - name: Install dbt dependencies
+        run: dbt deps
+        working-directory: dags/dbt/cima_dbt
 
       - name: Run sqlfluff (SQL lint)
-        run: sqlfluff lint dags/dbt/cima_marts/models
+        run: sqlfluff lint dags/dbt/cima_dbt/models
 
       - name: Run Pytest (DAG integrity)
         run: pytest tests/ -v

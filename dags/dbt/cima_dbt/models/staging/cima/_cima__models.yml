@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: stg_cima__psuministro
+    description: Daily snapshot of active medication shortages, one row per
+                 national_drug_code per snapshot_date.
+    columns:
+      - name: shortage_snapshot_key
+        description: Surrogate primary key (national_drug_code + snapshot_date).
+        data_tests:
+          - unique
+          - not_null
+      - name: national_drug_code
+        description: National drug code (Código Nacional), the presentation-level
+                     identifier used by AEMPS. Primary key of this model.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_cima__presentaciones')
+                field: national_drug_code
+              config:
+                severity: warn
+
+  - name: stg_cima__presentaciones
+    description: Commercial presentation details looked up for each
+                 national_drug_code appearing in that day's shortage list.
+    columns:
+      - name: presentation_snapshot_key
+        description: Surrogate primary key (national_drug_code + snapshot_date).
+        data_tests:
+          - unique
+          - not_null
+      - name: registration_number
+        description: Registration number (Número de Registro) of the parent
+                     medication.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_cima__medicamentos')
+                field: registration_number
+              config:
+                severity: warn
+
+  - name: stg_cima__medicamentos
+    description: Medication-level details, including ATC therapeutic category,
+                 looked up for each registration_number appearing in that
+                 day's shortage list.
+    columns:
+      - name: medication_snapshot_key
+        description: Surrogate primary key (registration_number + snapshot_date).
+        data_tests:
+          - unique
+          - not_null
+      - name: registration_number
+        description: Registration number (Número de Registro), primary key
+                     within a snapshot.
+        data_tests:
+          - not_null
+
+  - name: stg_cima__atc_codes
+    description: Full ATC hierarchical classification catalog, refreshed monthly.
+    columns:
+      - name: atc_code
+        description: ATC code, primary key of this model.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_cima__laboratorios
+    description: Full registered-laboratory name catalog, refreshed monthly.
+    columns:
+      - name: laboratory_name
+        description: Laboratory name, primary key of this model.
+        data_tests:
+          - unique
+          - not_null

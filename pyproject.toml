@@ -3,8 +3,8 @@
 line-length = 100
 target-version = "py313"
 exclude = [
-    "dags/dbt/cima_marts/target",
-    "dags/dbt/cima_marts/dbt_packages",
+    "dags/dbt/cima_dbt/target",
+    "dags/dbt/cima_dbt/dbt_packages",
 ]
 
 [tool.ruff.lint]
@@ -19,9 +19,9 @@ exclude_rules = "L034"
 ignore_templated_areas = true
 
 [tool.sqlfluff.templater.dbt]
-project_dir = "dags/dbt/cima_marts"
-profiles_dir = "dags/dbt/cima_marts"
-profile = "cima_marts"
+project_dir = "dags/dbt/cima_dbt"
+profiles_dir = "dags/dbt/cima_dbt"
+profile = "cima_dbt"
 target = "dev"
 
 # Pytest configuration
