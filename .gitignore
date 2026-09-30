@@ -15,3 +15,4 @@ config/
 target/
 dbt_packages/
 dbt_internal_packages/
+dags/dbt/cima_dbt/profiles.yml
