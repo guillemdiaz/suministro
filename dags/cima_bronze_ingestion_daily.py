@@ -1,12 +1,16 @@
 import json
 import time
+from pathlib import Path
 
 import pendulum
 import requests
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 from airflow.sdk import ObjectStoragePath, dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
+from cosmos import DbtTaskGroup, ProfileConfig, ProjectConfig
+from requests.adapters import HTTPAdapter
 from schemas.cima import MEDICAMENTOS_SCHEMA, PRESENTACIONES_SCHEMA, PSUMINISTRO_SCHEMA
+from urllib3.util.retry import Retry
 
 BASE_URL = "https://cima.aemps.es/cima/rest"
 BASE_PATH = ObjectStoragePath("gs://guillemdiaz-suministro/")
@@ -18,6 +22,29 @@ BUCKET = "guillemdiaz-suministro"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+}
+
+
+def make_session() -> requests.Session:
+    """
+    Creates a requests Session with connection pooling and
+    automatic retries for transient server errors and timeouts.
+    """
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    retries = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+    return session
+
+
+default_args = {
+    "retries": 2,
+    "retry_delay": pendulum.duration(minutes=2),
 }
 
 
@@ -46,26 +73,26 @@ def cima_pipeline():
         all_records = []
         current_page = 1
 
-        while True:
-            response = requests.get(
-                f"{BASE_URL}/psuministro",
-                params={"pagina": current_page},
-                headers=HEADERS,
-                timeout=30,
-            )
-            response.raise_for_status()
+        with make_session() as session:
+            while True:
+                response = session.get(
+                    f"{BASE_URL}/psuministro",
+                    params={"pagina": current_page},
+                    timeout=30,
+                )
+                response.raise_for_status()
 
-            try:
-                data = response.json()
-            except ValueError:
-                break
+                try:
+                    data = response.json()
+                except ValueError:
+                    break
 
-            results = data.get("resultados", [])
-            if not results:
-                break
+                results = data.get("resultados", [])
+                if not results:
+                    break
 
-            all_records.extend(results)
-            current_page += 1
+                all_records.extend(results)
+                current_page += 1
 
         ds = context["ds"]
         target = BASE_PATH / "psuministro" / ds / "data.json"
@@ -97,29 +124,28 @@ def cima_pipeline():
         presentaciones_data = []
         distinct_nregistros = set()
 
-        for cn in cn_list:
-            try:
-                response = requests.get(
-                    f"{BASE_URL}/presentacion/{cn}", headers=HEADERS, timeout=30
-                )
+        with make_session() as session:
+            for cn in cn_list:
+                try:
+                    response = session.get(f"{BASE_URL}/presentacion/{cn}", timeout=30)
 
-                if response.status_code == 200:
-                    try:
-                        data = response.json()
-                        presentaciones_data.append(data)
-                        if "nregistro" in data:
-                            distinct_nregistros.add(str(data["nregistro"]))
-                    except ValueError:
-                        pass
-                elif response.status_code == 204:
-                    pass  # Expected behavior for missing items
-                else:
-                    print(f"WARNING: Skipped CN {cn} - Status {response.status_code}")
+                    if response.status_code == 200:
+                        try:
+                            data = response.json()
+                            presentaciones_data.append(data)
+                            if "nregistro" in data:
+                                distinct_nregistros.add(str(data["nregistro"]))
+                        except ValueError:
+                            pass
+                    elif response.status_code == 204:
+                        pass  # Expected behavior for missing items
+                    else:
+                        print(f"WARNING: Skipped CN {cn} - Status {response.status_code}")
 
-            except requests.exceptions.RequestException as e:
-                print(f"ERROR: Network failure skipping CN {cn} - {str(e)}")
+                except requests.exceptions.RequestException as e:
+                    print(f"ERROR: Network failure skipping CN {cn} - {str(e)}")
 
-            time.sleep(0.1)
+                time.sleep(0.1)
 
         ds = context["ds"]
         target = BASE_PATH / "presentaciones" / ds / "data.json"
@@ -149,29 +175,32 @@ def cima_pipeline():
         """
         medicamentos_data = []
 
-        for nregistro in nregistro_list:
-            try:
-                response = requests.get(
-                    f"{BASE_URL}/medicamento",
-                    params={"nregistro": nregistro},
-                    headers=HEADERS,
-                    timeout=30,
-                )
+        with make_session() as session:
+            for nregistro in nregistro_list:
+                try:
+                    response = session.get(
+                        f"{BASE_URL}/medicamento",
+                        params={"nregistro": nregistro},
+                        timeout=30,
+                    )
 
-                if response.status_code == 200:
-                    try:
-                        medicamentos_data.append(response.json())
-                    except ValueError:
+                    if response.status_code == 200:
+                        try:
+                            medicamentos_data.append(response.json())
+                        except ValueError:
+                            pass
+                    elif response.status_code == 204:
                         pass
-                elif response.status_code == 204:
-                    pass
-                else:
-                    print(f"WARNING: Skipped nregistro {nregistro} - Status {response.status_code}")
+                    else:
+                        print(
+                            f"WARNING: Skipped nregistro {nregistro} - "
+                            f"Status {response.status_code}"
+                        )
 
-            except requests.exceptions.RequestException as e:
-                print(f"ERROR: Network failure skipping nregistro {nregistro} - {str(e)}")
+                except requests.exceptions.RequestException as e:
+                    print(f"ERROR: Network failure skipping nregistro {nregistro} - {str(e)}")
 
-            time.sleep(0.1)
+                time.sleep(0.1)
 
         ds = context["ds"]
         target = BASE_PATH / "medicamentos" / ds / "data.json"
@@ -228,6 +257,24 @@ def cima_pipeline():
         ignore_unknown_values=True,
     )
 
+    # dbt Transformations via Cosmos
+    # --------------------------------------------------------------------------
+    # Dynamically locate the absolute dbt project path relative to this DAG file
+    # so it works across Docker, local virtual environments, and GitHub Actions.
+    # --------------------------------------------------------------------------
+    DAG_DIR = Path(__file__).resolve().parent
+    DBT_PROJECT_PATH = DAG_DIR / "dbt" / "cima_dbt"
+
+    dbt_transformations = DbtTaskGroup(
+        group_id="transform_bronze_to_marts",
+        project_config=ProjectConfig(str(DBT_PROJECT_PATH)),
+        profile_config=ProfileConfig(
+            profile_name="cima_dbt",
+            target_name="prod",
+            profiles_yml_filepath=str(DBT_PROJECT_PATH / "profiles.yml"),
+        ),
+    )
+
     # Pipeline logic
     cns = extract_psuministro()
     nregistros = extract_presentaciones(cns)
@@ -236,6 +283,9 @@ def cima_pipeline():
     cns >> load_psuministro_bq
     nregistros >> load_presentaciones_bq
     meds >> load_medicamentos_bq
+
+    # Tells Airflow to wait until all load tasks finish before running dbt
+    [load_psuministro_bq, load_presentaciones_bq, load_medicamentos_bq] >> dbt_transformations
 
 
 cima_pipeline()
