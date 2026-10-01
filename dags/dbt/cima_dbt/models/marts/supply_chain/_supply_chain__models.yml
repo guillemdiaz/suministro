@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: fct_shortages_daily
+    description: One row per national_drug_code per snapshot_date, the base
+                 fact table for shortage analysis.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - national_drug_code
+              - snapshot_date
+    columns:
+      - name: national_drug_code
+        data_tests:
+          - not_null
+
+  - name: mart_shortages_by_lab
+    description: Shortage frequency and duration aggregated by marketing
+                 authorization holder, used to assess supply risk concentration.
+    columns:
+      - name: marketing_authorization_holder
+        data_tests:
+          - not_null
+
+  - name: mart_shortages_by_category
+    description: Shortage frequency aggregated by top-level ATC anatomical
+                 group (level 3), used to assess which therapeutic categories
+                 are most affected.
+    columns:
+      - name: atc_code
+        data_tests:
+          - not_null
