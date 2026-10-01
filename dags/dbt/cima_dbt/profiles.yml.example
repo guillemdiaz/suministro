@@ -1,0 +1,19 @@
+cima_dbt:
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: your-gcp-project-id
+      dataset: suministro_dev
+      location: europe-southwest1
+      keyfile: /path/to/your/local/secrets/gcp-key.json
+      threads: 4
+    prod:
+      type: bigquery
+      method: service-account
+      project: your-gcp-project-id
+      dataset: suministro_marts
+      location: europe-southwest1
+      keyfile: /opt/airflow/secrets/gcp-key.json
+      threads: 4
+  target: dev
