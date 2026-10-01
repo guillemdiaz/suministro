@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 
 import pendulum
 import requests
@@ -258,16 +259,19 @@ def cima_pipeline():
 
     # dbt Transformations via Cosmos
     # --------------------------------------------------------------------------
-    # Points to the dbt project folder inside the Docker container and forces
-    # the execution to use the 'prod' profile.
+    # Dynamically locate the absolute dbt project path relative to this DAG file
+    # so it works across Docker, local virtual environments, and GitHub Actions.
     # --------------------------------------------------------------------------
+    DAG_DIR = Path(__file__).resolve().parent
+    DBT_PROJECT_PATH = DAG_DIR / "dbt" / "cima_dbt"
+
     dbt_transformations = DbtTaskGroup(
         group_id="transform_bronze_to_marts",
-        project_config=ProjectConfig("/opt/airflow/dags/dbt/cima_dbt"),
+        project_config=ProjectConfig(str(DBT_PROJECT_PATH)),
         profile_config=ProfileConfig(
             profile_name="cima_dbt",
             target_name="prod",
-            profiles_yml_filepath="/opt/airflow/dags/dbt/cima_dbt/profiles.yml",
+            profiles_yml_filepath=str(DBT_PROJECT_PATH / "profiles.yml"),
         ),
     )
 
