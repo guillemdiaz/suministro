@@ -1,4 +1,4 @@
-# AEMPS Medication Shortages Tracker (Spain)
+# Suministro
 
 An automated data pipeline that tracks daily medication shortages in Spain. It
 pulls data from the Spanish Agency of Medicines ([CIMA API](https://cima.aemps.es/cima/resources/docs/CIMA_REST_API.pdf)), saves it to Google Cloud Storage, loads it into Google
