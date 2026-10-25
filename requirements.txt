@@ -1,5 +1,5 @@
-astronomer-cosmos
-dbt-bigquery
-google-cloud-storage
-requests
-apache-airflow-providers-google
+astronomer-cosmos==1.15.1
+dbt-bigquery==1.12.1
+google-cloud-storage==3.1.1
+requests==2.34.2
+apache-airflow-providers-google==22.1.0
