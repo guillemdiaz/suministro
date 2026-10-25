@@ -1,0 +1,5 @@
+# Ignores everything in the project by default
+*
+
+# Only allows the exact files the Dockerfile needs
+!requirements.txt
